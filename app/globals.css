@@ -305,6 +305,15 @@ footer {
   text-align: center;
 }
 
+footer .credits {
+  display: block;
+  margin-top: 6px;
+  color: #8fa3c8;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+}
+
 .victory-card {
   margin-top: 12vh;
   padding: 48px 24px;

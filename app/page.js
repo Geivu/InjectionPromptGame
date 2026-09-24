@@ -343,6 +343,9 @@ export default function Home() {
         <footer>
           Use fictional challenges only. Do not attack real accounts or
           services.
+          <span className="credits">
+            Made by the Technology Club · Logos Academy
+          </span>
         </footer>
       </section>
     </main>
