@@ -8,6 +8,43 @@ const levelNames = {
   3: "The Security Robot",
 };
 
+const STRATEGY_STORAGE_KEY =
+  "robot-game-winning-strategies";
+
+function loadWinningStrategies() {
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem(STRATEGY_STORAGE_KEY) || "[]"
+    );
+
+    return Array.isArray(saved) ? saved : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveWinningStrategy(level, prompt) {
+  if (!prompt?.trim()) {
+    return;
+  }
+
+  const existing = loadWinningStrategies();
+
+  const updated = [
+    ...existing.filter(
+      (item) => Number(item.level) !== Number(level)
+    ),
+    {
+      level: Number(level),
+      prompt: prompt.trim().slice(0, 1500),
+    },
+  ];
+
+  localStorage.setItem(
+    STRATEGY_STORAGE_KEY,
+    JSON.stringify(updated)
+  );
+}
 
 export default function Home() {
   const [level, setLevel] = useState(1);
@@ -19,6 +56,8 @@ export default function Home() {
   const [finished, setFinished] = useState(false);
 
   const bottomRef = useRef(null);
+  const latestPlayerPromptRef = useRef("");
+
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -30,6 +69,8 @@ export default function Home() {
     const text = input.trim();
 
     if (!text || loading) return;
+    latestPlayerPromptRef.current = text;
+
 
     const nextMessages = [
       ...messages,
@@ -53,13 +94,26 @@ export default function Home() {
         body: JSON.stringify({
           level,
           messages: nextMessages,
+
+          previousWinningPrompts: loadWinningStrategies()
+            .filter(
+              (item) => Number(item.level) < Number(level)
+            )
+            .map((item) => item.prompt),
         }),
+
       });
 
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(data.error || "The AI request failed.");
+      }
+
+// Only remember prompts that passed the adaptive strategy scanner.
+// A blocked repeated strategy must not become the winning prompt.
+      if (!data.blocked) {
+        latestPlayerPromptRef.current = text;
       }
 
       setMessages((currentMessages) => [
@@ -112,6 +166,10 @@ export default function Home() {
         setStatus(data.error || "Incorrect password.");
         return;
       }
+      saveWinningStrategy(
+        level,
+        latestPlayerPromptRef.current
+      );
 
       if (data.completed) {
         setFinished(true);
@@ -120,6 +178,8 @@ export default function Home() {
       }
 
       const nextLevel = level + 1;
+
+      latestPlayerPromptRef.current = "";
 
       setLevel(nextLevel);
       setMessages([]);
@@ -137,6 +197,8 @@ export default function Home() {
   }
 
   function restartGame() {
+    localStorage.removeItem(STRATEGY_STORAGE_KEY);
+    latestPlayerPromptRef.current = "";
     setLevel(1);
     setMessages([]);
     setInput("");
@@ -151,7 +213,7 @@ export default function Home() {
         <section className="victory-card">
           <div className="victory-icon">🏆</div>
           <p className="eyebrow">CHALLENGE COMPLETE</p>
-          <h1>You defeated all four guardians!</h1>
+          <h1>You defeated all three guardians!</h1>
           <p>
             You demonstrated that AI instructions alone are not a secure
             place to store sensitive information.
